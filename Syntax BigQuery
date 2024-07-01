@@ -1,0 +1,47 @@
+-- Membuat table analisa pada dataset kimia_farma
+CREATE TABLE kimia_farma.kf_final_analisa as
+
+-- Melakukan CTE
+WITH data_new as (
+
+SELECT ft.transaction_id, 
+ft.date,
+ft.branch_id, 
+kc.branch_name, 
+kc.kota, 
+kc.provinsi, 
+kc.rating as rating_cabang, 
+ft.customer_name, 
+ft.product_id,
+kp.product_name,
+kp.price as actual_price,
+ft.discount_percentage,
+ft.rating as rating_transaksi,
+
+CASE
+        WHEN kp.price <= 50000 THEN 0.1
+        WHEN kp.price > 50000 AND kp.price <= 100000 THEN 0.15
+        WHEN kp.price > 100000 AND kp.price <= 300000 THEN 0.2
+        WHEN kp.price > 300000 AND kp.price <= 500000 THEN 0.25
+        ELSE 0.3
+END as persentase_gross_laba,
+
+-- Penjualan bersih setelah diskon
+kp.price - (kp.price * ft.discount_percentage) as nett_sales,
+FROM `kimia_farma.kf_final_transaction` as ft
+
+LEFT JOIN `kimia_farma.kf_kantor_cabang` as kc 
+    on ft.branch_id = kc.branch_id
+LEFT JOIN `kimia_farma.kf_product` as kp 
+    on ft.product_id = kp.product_id
+)
+
+-- Memilih data sebelumnya dan menghapus duplikat
+SELECT DISTINCT dn.transaction_id, dn.date, dn.branch_id, dn.branch_name, dn.kota, dn.provinsi, dn.rating_cabang, dn.customer_name, dn.product_id, dn.product_name, dn.actual_price, dn.discount_percentage, dn.persentase_gross_laba, dn.nett_sales, 
+
+-- Keuntungan bersih
+((dn.actual_price * dn.persentase_gross_laba) - (dn.actual_price - dn.nett_sales)) as nett_profit,
+
+dn.rating_transaksi,    
+FROM data_new as dn    
+;
